@@ -152,20 +152,18 @@ control_box = ControlBox()
 
 
 def web_server():
-  if control_box.is_ccw_rotor_enabled():
-    relay_state = ''
-  else:
-    relay_state = 'checked'
   html = """<html>
     <head>
       <meta name="viewport" content="width=device-width, initial-scale=1">
       <style>
         body{font-family:Arial; text-align: center; margin: 0px auto; padding-top:30px;}
-        .switch{position:relative;display:inline-block;width:120px;height:68px}.switch input{display:none}
+        .switch{position:relative;display:block;width:120px;height:68px;margin-bottom:10px}.switch input{display:none}
         .slider{position:absolute;top:0;left:0;right:0;bottom:0;background-color:#ccc;border-radius:34px}
         .slider:before{position:absolute;content:"";height:52px;width:52px;left:8px;bottom:8px;background-color:#fff;-webkit-transition:.4s;transition:.4s;border-radius:68px}
         input:checked+.slider{background-color:#2196F3}
         input:checked+.slider:before{-webkit-transform:translateX(52px);-ms-transform:translateX(52px);transform:translateX(52px)}
+        #control_box{margin:auto; width:10%;}
+        #control_box .label{position:relative; right:100%; top:40%}
       </style>
       <script>
         function toggleCheckbox(element) {
@@ -174,56 +172,38 @@ def web_server():
             xhr.open("GET", "/?relay=on", true);
           }
           else {
-            xhr.open("GET", "/?relay=off", true); } xhr.send();
+            xhr.open("GET", "/?relay=off", true);
           }
+          xhr.send();
+        }
 
-          function controlAntennaRotation(element) {
-            var xhr = new XMLHttpRequest();
-            var command = element.value;
-            console.log("rotation %%o", command);
-            xhr.open("POST", "/" + command, true);
-            xhr.send();
-          }
+        function controlAntennaRotation(element) {
+          var xhr = new XMLHttpRequest();
+          var command = element.value;
+          console.log("rotation %%o", command);
+          xhr.open("POST", "/" + command, true);
+          xhr.send();
+        }
       </script>
     </head>
     <body>
       <h1>Sancudo IoT Relay Control</h1>
       <form id="control_box" action="#">
-        <div>
-          <input type="radio" id="stop_antenna_rotation" name="direction" value="stop_antenna_rotation" onchange="controlAntennaRotation(this)">
-          <label class="switch" for="rotor_off">Off</label>
-        </div>
-        <div>
-          <input type="radio" id="rotate_antenna_clockwise" name="direction" value="rotate_antenna_clockwise" onchange="controlAntennaRotation(this)">
-          <label class="switch" for="rotor_clockwise">Clockwise</label>
-        </div>
-        <div>
-          <input type="radio" id="rotate_antenna_counter_clockwise" name="direction" value="rotate_antenna_counter_clockwise" onchange="controlAntennaRotation(this)">
-          <label class="switch" for="cw_rotor">Counter Clockwise</label>
-        </div>
+        <label class="switch">
+          <span class="label">Off</span>
+          <input type="radio" id="stop_antenna_rotation" name="direction" value="stop_antenna_rotation" onchange="controlAntennaRotation(this)"><span class="slider"></span>
+        </label>
+        <label class="switch">
+          <span class="label">Clockwise</span>
+          <input type="radio" id="rotate_antenna_clockwise" name="direction" value="rotate_antenna_clockwise" onchange="controlAntennaRotation(this)"><span class="slider"></span>
+        </label>
+        <label class="switch">
+          <span class="label">Counter Clockwise</span>
+          <input type="radio" id="rotate_antenna_counter_clockwise" name="direction" value="rotate_antenna_counter_clockwise" onchange="controlAntennaRotation(this)"><span class="slider"></span>
+        </label>
       </form>
-      <table>
-        <!--
-        <tr>
-          <td>CCW Relay</td>
-          <td>
-            <label class="switch">
-              <input name="relay" type="checkbox" onchange="toggleCheckbox(this)" %s><span class="slider"></span>
-            </label>
-          </td>
-        </tr>
-        <tr>
-          <td>CW Relay</td>
-          <td>
-            <label class="switch">
-              <input name="cw" type="checkbox" onchange="toggleCheckbox(this)" %s><span class="slider"></span>
-            </label>
-          </td>
-        </tr>
-        -->
-      </table>
     </body>
-  </html>""" % (relay_state, relay_state)
+  </html>"""
   return html
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
