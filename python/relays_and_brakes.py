@@ -4,7 +4,7 @@ except:
   class Pin:
     OUT = "OUT"
 
-    def __init__(self, id_, mode=None):
+    def __init__(self, id_, mode=-1, pull=-1):
       print(f"Mocking pin {id_}")
       self._id = id_
       self._value = None
@@ -15,6 +15,12 @@ except:
         self._value = value_to_set
       else:
         return self._value
+
+    def __str__(self):
+      return str({
+        "id": self._id,
+        "value": self.value
+      })
 
 try:
   import network
@@ -48,11 +54,103 @@ try:
 except:
   import socket
 
-relay=Pin(3,Pin.OUT)
+class Brake:
+  def __init__(self, relay):
+    self._relay = relay
+    self._name = "Brake"
+
+  def is_enabled(self):
+    return self._relay.value() == 0
+
+  def enable(self):
+    print(f"Enabling {self._name}")
+    self._relay.value(0)
+
+  def disable(self):
+    print(f"Disabling {self._name}")
+    self._relay.value(1)
+
+  def __str__(self):
+    return str({
+      "relay": str(self._relay),
+      "name": self._name,
+    })
+
+
+class Rotor:
+  def __init__(self, relay, name):
+    self._relay = relay
+    self._name = name
+
+  def is_enabled(self):
+    return self._relay.value() == 0
+
+  def enable(self):
+    print(f"Enabling {self._name}")
+    self._relay.value(0)
+
+  def disable(self):
+    print(f"Disabling {self._name}")
+    self._relay.value(1)
+
+  def __str__(self):
+    return str({
+      "relay": str(self._relay),
+      "name": self._name,
+    })
+
+
+class ControlBox:
+  def __init__(self, brake_pause_time_in_seconds=4.0):
+    self._brake = Brake(relay=Pin(2,Pin.OUT))
+    self._ccw_rotor = Rotor(relay=Pin(3,Pin.OUT,1), name="CCW")
+    self._cw_rotor = Rotor(relay=Pin(4,Pin.OUT,1), name="CW")
+    self._brake_pause_time_in_seconds = brake_pause_time_in_seconds
+
+  def is_ccw_rotor_enabled(self):
+    return self._ccw_rotor.is_enabled()
+
+  def is_cw_rotor_enabled(self):
+    return self._cw_rotor.is_enabled()
+
+  def is_brake_enabled(self):
+    return self._brake.is_enabled()
+
+  def _sleep(self, sleep_seconds):
+    print(f"Pausing for {sleep_seconds} seconds")
+    time.sleep(sleep_seconds)
+
+  def enable_ccw_rotor(self):
+    self._cw_rotor.disable()
+    self._brake.disable()
+    self._sleep(self._brake_pause_time_in_seconds)
+    self._ccw_rotor.enable()
+
+  def enable_cw_rotor(self):
+    self._ccw_rotor.disable()
+    self._brake.disable()
+    self._sleep(self._brake_pause_time_in_seconds)
+    self._cw_rotor.enable()
+
+  def disable_all(self):
+    self._ccw_rotor.disable()
+    self._cw_rotor.disable()
+    self._brake.enable()
+
+  def __str__(self):
+    return str({
+      "brake": str(self._brake),
+      "ccw_rotor": str(self._ccw_rotor),
+      "cw_rotor": str(self._cw_rotor),
+      "brake_pause_time_in_seconds": self._brake_pause_time_in_seconds
+    })
+
+
+control_box = ControlBox()
 
 
 def web_server():
-  if relay.value() == 1:
+  if control_box.is_ccw_rotor_enabled():
     relay_state = ''
   else:
     relay_state = 'checked'
@@ -102,33 +200,35 @@ def web_server():
   </html>""" % (relay_state, relay_state)
   return html
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('', 80))
-s.listen(5)
+print(f"name {__name__}")
+if __name__ == "__main__":
+  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+  s.bind(('', 80))
+  s.listen(5)
 
-while True:
-  try:
-    conn, addr = s.accept()
-    conn.settimeout(3.0)
-    print('Got a connection from %s' % str(addr))
-    request = conn.recv(1024)
-    conn.settimeout(None)
-    request = str(request)
-    print('Content = %s' % request)
-    relay_on = request.find('/?relay=on')
-    relay_off = request.find('/?relay=off')
-    if relay_on == 6:
-      print('RELAY ON')
-      relay.value(0)
-    if relay_off == 6:
-      print('RELAY OFF')
-      relay.value(1)
-    response = web_server()
-    conn.send(b'HTTP/1.1 200 OK\n')
-    conn.send(b'Content-Type: text/html\n')
-    conn.send(b'Connection: close\n\n')
-    conn.sendall(response.encode())
-    conn.close()
-  except OSError as e:
-    conn.close()
-    print('Connection closed')
+  while True:
+    try:
+      conn, addr = s.accept()
+      conn.settimeout(3.0)
+      print('Got a connection from %s' % str(addr))
+      request = conn.recv(1024)
+      conn.settimeout(None)
+      request = str(request)
+      print('Content = %s' % request)
+      relay_on = request.find('/?relay=on')
+      relay_off = request.find('/?relay=off')
+      if relay_on == 6:
+        print('RELAY ON')
+        control_box.enable_ccw_rotor()
+      if relay_off == 6:
+        print('RELAY OFF')
+        control_box.disable_all()
+      response = web_server()
+      conn.send(b'HTTP/1.1 200 OK\n')
+      conn.send(b'Content-Type: text/html\n')
+      conn.send(b'Connection: close\n\n')
+      conn.sendall(response.encode())
+      conn.close()
+    except OSError as e:
+      conn.close()
+      print('Connection closed')
