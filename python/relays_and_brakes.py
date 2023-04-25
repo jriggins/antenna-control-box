@@ -49,6 +49,7 @@ except:
   print("Did not connect to WLAN. Assuming running local")
 
 import time
+import re
 try:
   import usocket as socket
 except:
@@ -120,19 +121,19 @@ class ControlBox:
     print(f"Pausing for {sleep_seconds} seconds")
     time.sleep(sleep_seconds)
 
-  def enable_ccw_rotor(self):
+  def rotate_antenna_counter_clockwise(self):
     self._cw_rotor.disable()
     self._brake.disable()
     self._sleep(self._brake_pause_time_in_seconds)
     self._ccw_rotor.enable()
 
-  def enable_cw_rotor(self):
+  def rotate_antenna_clockwise(self):
     self._ccw_rotor.disable()
     self._brake.disable()
     self._sleep(self._brake_pause_time_in_seconds)
     self._cw_rotor.enable()
 
-  def disable_all(self):
+  def stop_antenna_rotation(self):
     self._ccw_rotor.disable()
     self._cw_rotor.disable()
     self._brake.enable()
@@ -174,11 +175,34 @@ def web_server():
           else {
             xhr.open("GET", "/?relay=off", true); } xhr.send();
           }
+
+          function controlAntennaRotation(element) {
+            var xhr = new XMLHttpRequest();
+            var command = element.value;
+            console.log("rotation %%o", command);
+            xhr.open("POST", "/" + command, true);
+            xhr.send();
+          }
       </script>
     </head>
     <body>
       <h1>Sancudo IoT Relay Control</h1>
+      <form id="control_box" action="#">
+        <div>
+          <input type="radio" id="stop_antenna_rotation" name="direction" value="stop_antenna_rotation" onchange="controlAntennaRotation(this)">
+          <label class="switch" for="rotor_off">Off</label>
+        </div>
+        <div>
+          <input type="radio" id="rotate_antenna_clockwise" name="direction" value="rotate_antenna_clockwise" onchange="controlAntennaRotation(this)">
+          <label class="switch" for="rotor_clockwise">Clockwise</label>
+        </div>
+        <div>
+          <input type="radio" id="rotate_antenna_counter_clockwise" name="direction" value="rotate_antenna_counter_clockwise" onchange="controlAntennaRotation(this)">
+          <label class="switch" for="cw_rotor">Counter Clockwise</label>
+        </div>
+      </form>
       <table>
+        <!--
         <tr>
           <td>CCW Relay</td>
           <td>
@@ -191,10 +215,11 @@ def web_server():
           <td>CW Relay</td>
           <td>
             <label class="switch">
-              <input name="relay" type="checkbox" onchange="toggleCheckbox(this)" %s><span class="slider"></span>
+              <input name="cw" type="checkbox" onchange="toggleCheckbox(this)" %s><span class="slider"></span>
             </label>
           </td>
         </tr>
+        -->
       </table>
     </body>
   </html>""" % (relay_state, relay_state)
@@ -215,14 +240,13 @@ if __name__ == "__main__":
       conn.settimeout(None)
       request = str(request)
       print('Content = %s' % request)
-      relay_on = request.find('/?relay=on')
-      relay_off = request.find('/?relay=off')
-      if relay_on == 6:
-        print('RELAY ON')
-        control_box.enable_ccw_rotor()
-      if relay_off == 6:
-        print('RELAY OFF')
-        control_box.disable_all()
+
+      command_match = re.search("POST \/(\w*)", request)
+      if command_match is not None:
+        command = command_match.group(1)
+        print(f"command: {command}")
+        getattr(control_box, command)()
+
       response = web_server()
       conn.send(b'HTTP/1.1 200 OK\n')
       conn.send(b'Content-Type: text/html\n')
