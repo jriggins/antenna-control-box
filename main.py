@@ -136,6 +136,7 @@ class ControlBox:
   def stop_antenna_rotation(self):
     self._ccw_rotor.disable()
     self._cw_rotor.disable()
+    self._sleep(self._brake_pause_time_in_seconds)
     self._brake.enable()
 
   def __str__(self):
@@ -225,34 +226,32 @@ def web_server():
   </html>""" % (relay_state, relay_state)
   return html
 
-print(f"name {__name__}")
-if __name__ == "__main__":
-  s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-  s.bind(('', 80))
-  s.listen(5)
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(('', 80))
+s.listen(5)
 
-  while True:
-    try:
-      conn, addr = s.accept()
-      conn.settimeout(3.0)
-      print('Got a connection from %s' % str(addr))
-      request = conn.recv(1024)
-      conn.settimeout(None)
-      request = str(request)
-      print('Content = %s' % request)
+while True:
+  try:
+    conn, addr = s.accept()
+    conn.settimeout(3.0)
+    print('Got a connection from %s' % str(addr))
+    request = conn.recv(1024)
+    conn.settimeout(None)
+    request = str(request)
+    print('Content = %s' % request)
 
-      command_match = re.search("POST \/(\w*)", request)
-      if command_match is not None:
-        command = command_match.group(1)
-        print(f"command: {command}")
-        getattr(control_box, command)()
+    command_match = re.search("POST \/(\w*)", request)
+    if command_match is not None:
+      command = command_match.group(1)
+      print(f"command: {command}")
+      getattr(control_box, command)()
 
-      response = web_server()
-      conn.send(b'HTTP/1.1 200 OK\n')
-      conn.send(b'Content-Type: text/html\n')
-      conn.send(b'Connection: close\n\n')
-      conn.sendall(response.encode())
-      conn.close()
-    except OSError as e:
-      conn.close()
-      print('Connection closed')
+    response = web_server()
+    conn.send(b'HTTP/1.1 200 OK\n')
+    conn.send(b'Content-Type: text/html\n')
+    conn.send(b'Connection: close\n\n')
+    conn.sendall(response.encode())
+    conn.close()
+  except OSError as e:
+    conn.close()
+    print('Connection closed')
