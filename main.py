@@ -207,6 +207,28 @@ def web_server():
           return new Promise((resolve) => setTimeout(resolve, time));
         }
 
+        function queryAntennaPot() {
+          var xhr = new XMLHttpRequest();
+          xhr.addEventListener("load", () => {
+            var output = document.querySelector(".output");
+            var responseJson = null;
+
+            if (xhr.responseText) {
+              responseJson = JSON.parse(xhr.responseText);
+              output.innerText = responseJson["current_antenna_pot_voltage"].toFixed(5);
+            } else {
+              console.log("Unable to parse response JSON %%o", xhr);
+            }
+          });
+
+          xhr.open("GET", "/current_antenna_pot_voltage");
+          xhr.send();
+        }
+
+        window.addEventListener("DOMContentLoaded", (event) => {
+          setInterval(queryAntennaPot, 3000);
+        });
+
         function controlAntennaRotation(element) {
           var xhr = new XMLHttpRequest();
           var command = element.value;
@@ -275,8 +297,18 @@ while True:
       print(f"command: {command}")
       getattr(control_box, command)()
 
-    response = web_server()
-    # print(f"response: {response}")
+    query_match = re.search("GET \/(\w*)", request)
+    if query_match is not None:
+      query = query_match.group(1)
+      print(f"query: {query}")
+      if hasattr(control_box, query):
+        import json
+        response = json.dumps({
+          query: getattr(control_box, query)()
+        })
+      else:
+        response = web_server()
+    print(f"response: {response}")
 
     conn.send(b'HTTP/1.1 200 OK\n')
     conn.send(b'Content-Type: text/html\n')
