@@ -276,7 +276,7 @@ while True:
       getattr(control_box, command)()
 
     response = web_server()
-    print(f"response: {response}")
+    # print(f"response: {response}")
 
     conn.send(b'HTTP/1.1 200 OK\n')
     conn.send(b'Content-Type: text/html\n')
