@@ -135,7 +135,7 @@ class ControlBox:
     self._ccw_rotor = Rotor(relay=Pin(3,Pin.OUT,1), name="CCW")
     self._cw_rotor = Rotor(relay=Pin(4,Pin.OUT,1), name="CW")
     self._brake_pause_time_in_seconds = brake_pause_time_in_seconds
-    self._antenna_pot = AntennaPot(adc=ADC(Pin(28)))
+    self._antenna_pot = AntennaPot(adc=ADC(Pin(26)))
 
   def is_ccw_rotor_enabled(self):
     return self._ccw_rotor.is_enabled()
@@ -215,7 +215,7 @@ def web_server():
 
             if (xhr.responseText) {
               responseJson = JSON.parse(xhr.responseText);
-              output.innerText = responseJson["current_antenna_pot_voltage"].toFixed(5);
+              output.innerText = responseJson["current_antenna_pot_voltage"].toFixed(2);
             } else {
               console.log("Unable to parse response JSON %%o", xhr);
             }
@@ -248,7 +248,7 @@ def web_server():
       </script>
     </head>
     <body>
-      <h1>Sancudo IoT Relay Control</h1>
+      <h1>Antenna Rotor Controller</h1>
       <form id="control_box" action="#">
         <label class="switch">
           <span class="label">Off</span>
